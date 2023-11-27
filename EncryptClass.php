@@ -15,6 +15,7 @@ class EncryptClass {
     //Main function to use multiple method encrypt the text
     public function encryption($plainText){
         $ancient_encryption_result = $this->substitutionEncryption($plainText);
+        //return $ancient_encryption_result;
         $des_encryption_result = $this->desEncryption($ancient_encryption_result);
         return $des_encryption_result;
     }
@@ -29,17 +30,26 @@ class EncryptClass {
         for ($i = 0; $i < $length; $i++) {
             $single_word = $text[$i];
             $toascii = ord($single_word);
-
+            if($toascii >= 65 && $toascii <= 90 || $toascii >=97 && $toascii <= 122)
+            {
             if ($toascii >= $limit_ascii_smell_letter && $toascii <= 90 || $toascii >= $limit_ascii_capital_letter && $toascii <= 122) {
                 $encrypted_result .= chr($toascii - (26 -  $this->shifting));
             } else {
                 $encrypted_result .= chr($toascii +  $this->shifting);
             }
-        }
-
-        return $encrypted_result;
+            }
+            else if($toascii >= 48 && $toascii <= 57)
+            {
+                if ($toascii >= 48 && $toascii <= 51) {
+                    $encrypted_result .= chr($toascii + (9 - $this->shifting));
+                } else {
+                    $encrypted_result .= chr($toascii - $this->shifting);
+                }
+            }
+        
     }
-
+    return $encrypted_result;
+    }
     //Ancient Encryption -> Transposition  cipher
     private function transpositionEncryption($text){
         //coding....
@@ -66,16 +76,20 @@ class EncryptClass {
             $paddingChar = $this->desSize  - (strlen($tobin) % $this->desSize );
             $full_bin = str_repeat('0', $paddingChar) . $tobin;
             $result_full_binary = "";
-
             for ($j = 0; $j < $this->desSize ; $j++) {
                 $single_request_value = $full_bin[$j];
                 $single_key_value = $Des_bin[$j];
                 $single_result_binary = ($single_key_value xor $single_request_value) ? '1' : '0';
                 $result_full_binary .= $single_result_binary;
             }
-
             $encrypted_data = $result_full_binary;
-            $encrypt_result .= chr(bindec($encrypted_data));
+            $encrypted_dec = bindec($encrypted_data);
+            if ($encrypted_dec > 10){
+                $encrypt_result .= chr($encrypted_dec);
+            }
+            else {
+                $encrypt_result .= $encrypted_dec;
+            }
         }
 
         return $encrypt_result;

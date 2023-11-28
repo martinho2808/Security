@@ -10,14 +10,53 @@ class EncryptClass {
         $this->shifting = 3;
         $this->desKey = decbin(ord("20"));
         $this->desSize = 8;
+         //If directly use the encryption method for numbers, there will be problems in processing (for example, lost data after hexadecimal conversion)
+        $this->numericTable = [
+            '0' => '&#x1000;',
+            '1' => '&#x1001;',
+            '2' => '&#x1002;',
+            '3' => '&#x1003;',
+            '4' => '&#x1004;',
+            '5' => '&#x1005;',
+            '6' => '&#x1006;',
+            '7' => '&#x1007;',
+            '8' => '&#x1008;',
+            '9' => '&#x1009;',
+        ];
     }
 
     //Main function to use multiple method encrypt the text
     public function encryption($plainText){
-        $ancient_encryption_result = $this->substitutionEncryption($plainText);
-        //return $ancient_encryption_result;
-        $des_encryption_result = $this->desEncryption($ancient_encryption_result);
-        return $des_encryption_result;
+        $encrypted_result = '';
+        $length = strlen($plainText);
+    
+        // Process each character or number separately
+        for ($i = 0; $i < $length; $i++) {
+            $char = $plainText[$i];
+    
+            if (is_numeric($char)) {
+                // If it is a number, use the encryptNumericData method to encrypt it
+                $encrypted_result .= $this->encryptNumericData($char);
+            } else {
+                // If it is a character, first use the substitutionEncryption method to encrypt it
+                $encrypted_char = $this->substitutionEncryption($char);
+    
+                // Then use desEncryption method to encrypt
+                $encrypted_result .= $this->desEncryption($encrypted_char);
+            }
+        }
+    
+        return $encrypted_result;
+    }
+
+    // Encrypt numeric data using custom numeric table
+    private function encryptNumericData($numericData) {
+        if (isset($this->numericTable[$numericData])) {
+            return $this->numericTable[$numericData];
+        } else {
+            // Handle cases where the numeric value doesn't have a corresponding encryption value
+            return $numericData;
+        }
     }
 
     //Ancient Encryption -> Substitution cipher
@@ -30,26 +69,16 @@ class EncryptClass {
         for ($i = 0; $i < $length; $i++) {
             $single_word = $text[$i];
             $toascii = ord($single_word);
-            if($toascii >= 65 && $toascii <= 90 || $toascii >=97 && $toascii <= 122)
-            {
             if ($toascii >= $limit_ascii_smell_letter && $toascii <= 90 || $toascii >= $limit_ascii_capital_letter && $toascii <= 122) {
                 $encrypted_result .= chr($toascii - (26 -  $this->shifting));
             } else {
                 $encrypted_result .= chr($toascii +  $this->shifting);
             }
             }
-            else if($toascii >= 48 && $toascii <= 57)
-            {
-                if ($toascii >= 48 && $toascii <= 51) {
-                    $encrypted_result .= chr($toascii + (9 - $this->shifting));
-                } else {
-                    $encrypted_result .= chr($toascii - $this->shifting);
-                }
-            }
         
-    }
     return $encrypted_result;
     }
+    
     //Ancient Encryption -> Transposition  cipher
     private function transpositionEncryption($text){
         //coding....
@@ -83,13 +112,7 @@ class EncryptClass {
                 $result_full_binary .= $single_result_binary;
             }
             $encrypted_data = $result_full_binary;
-            $encrypted_dec = bindec($encrypted_data);
-            if ($encrypted_dec > 10){
-                $encrypt_result .= chr($encrypted_dec);
-            }
-            else {
-                $encrypt_result .= $encrypted_dec;
-            }
+            $encrypt_result = chr(bindec($encrypted_data));
         }
 
         return $encrypt_result;

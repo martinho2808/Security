@@ -12,41 +12,27 @@ class EncryptClass {
         $this->desSize = 8;
          //If directly use the encryption method for numbers, there will be problems in processing (for example, lost data after hexadecimal conversion)
         $this->numericTable = [
-            '0' => '&#x1000;',
-            '1' => '&#x1001;',
-            '2' => '&#x1002;',
-            '3' => '&#x1003;',
-            '4' => '&#x1004;',
-            '5' => '&#x1005;',
-            '6' => '&#x1006;',
-            '7' => '&#x1007;',
-            '8' => '&#x1008;',
-            '9' => '&#x1009;',
+            '0' => 'က',
+            '1' => 'ခ',
+            '2' => 'ဂ',
+            '3' => 'ဃ',
+            '4' => 'င',
+            '5' => 'စ',
+            '6' => 'ဆ',
+            '7' => 'ဇ',
+            '8' => 'ဈ',
+            '9' => 'ဉ',
         ];
     }
 
     //Main function to use multiple method encrypt the text
     public function encryption($plainText){
-        $encrypted_result = '';
-        $length = strlen($plainText);
-    
-        // Process each character or number separately
-        for ($i = 0; $i < $length; $i++) {
-            $char = $plainText[$i];
-    
-            if (is_numeric($char)) {
-                // If it is a number, use the encryptNumericData method to encrypt it
-                $encrypted_result .= $this->encryptNumericData($char);
-            } else {
-                // If it is a character, first use the substitutionEncryption method to encrypt it
-                $encrypted_char = $this->substitutionEncryption($char);
-    
-                // Then use desEncryption method to encrypt
-                $encrypted_result .= $this->desEncryption($encrypted_char);
-            }
-        }
-    
-        return $encrypted_result;
+        $ancient_encryption_result = $this->substitutionEncryption($plainText);
+        //return $ancient_encryption_result;
+        $des_encryption_result = $this->desEncryption($ancient_encryption_result);
+        //return $des_encryption_result;
+        $transpostion_encryption_result = $this->transpositionEncryption($des_encryption_result,'ABCDEF');
+        return $transpostion_encryption_result;
     }
 
     // Encrypt numeric data using custom numeric table
@@ -61,27 +47,63 @@ class EncryptClass {
 
     //Ancient Encryption -> Substitution cipher
     private function substitutionEncryption($text) {  
-        $limit_ascii_capital_letter = 122 - $this->shifting;
-        $limit_ascii_smell_letter = 90 - $this->shifting;
         $length = strlen($text);
         $encrypted_result = "";
-
+    
         for ($i = 0; $i < $length; $i++) {
             $single_word = $text[$i];
             $toascii = ord($single_word);
-            if ($toascii >= $limit_ascii_smell_letter && $toascii <= 90 || $toascii >= $limit_ascii_capital_letter && $toascii <= 122) {
-                $encrypted_result .= chr($toascii - (26 -  $this->shifting));
+            if ($toascii >= 65 && $toascii <= 90) {
+                $encrypted_result .= chr(($toascii - 65 + $this->shifting) % 26 + 65);
+            } elseif ($toascii >= 97 && $toascii <= 122) {
+                $encrypted_result .= chr(($toascii - 97 + $this->shifting) % 26 + 97);
             } else {
-                $encrypted_result .= chr($toascii +  $this->shifting);
+                $encrypted_result .= $single_word;
             }
-            }
+        }
         
-    return $encrypted_result;
+        return $encrypted_result;
     }
     
     //Ancient Encryption -> Transposition  cipher
-    private function transpositionEncryption($text){
+    private function transpositionEncryption($text,$key){
         //coding....
+        $text = str_replace(' ', '', $text);
+        $keyLength = strlen($key);
+        $messageLength = strlen($text);
+        
+        // Calculate the number of rows required in the grid
+        $numRows = ceil($messageLength / $keyLength);
+
+        // Create an empty grid
+        $grid = array();
+        for ($i = 0; $i < $numRows; $i++) {
+            $grid[$i] = array();
+        }
+        $index = 0;
+        for ($row = 0; $row < $numRows; $row++) {
+            for ($col = 0; $col < $keyLength; $col++) {
+                if ($index < $messageLength) {
+                    $grid[$row][$col] = $text[$index];
+                    $index++;
+                } else {
+                    $grid[$row][$col] = '';
+                }
+            }
+        }
+        // Rearrange the columns based on the key
+        $sortedKey = str_split($key);
+        asort($sortedKey);
+
+        $EncryptedMessage = '';
+        foreach ($sortedKey as $col) {
+            $colIndex = array_search($col, str_split($key));
+            for ($row = 0; $row < $numRows; $row++) {
+                $EncryptedMessage .= $grid[$row][$colIndex];
+            }
+        }
+
+        return $EncryptedMessage;
     }
 
     //Symmetric Encrytion -> DES encryption
@@ -112,7 +134,7 @@ class EncryptClass {
                 $result_full_binary .= $single_result_binary;
             }
             $encrypted_data = $result_full_binary;
-            $encrypt_result = chr(bindec($encrypted_data));
+            $encrypt_result .= chr(bindec($encrypted_data));
         }
 
         return $encrypt_result;

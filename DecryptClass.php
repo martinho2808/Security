@@ -28,24 +28,14 @@ class DecryptClass {
 
     //Main function to use multiple method decrypt the text
     public function decryption($plainText) {
-        $plainText = mb_convert_encoding($plainText, 'UTF-8');
-    
-        $decrypted_result = '';
-        $length = mb_strlen($plainText);
-        for ($i = 0; $i < $length; $i++) {
-            $char = mb_substr($plainText, $i, 1);
-            if ($this->isCustomNumeric($char)) {
-                // If it is a number, use the decryptNumericData method to decrypt it
-                $decrypted_result .= $this->decryptNumericData($char);
-            } else {
-                // If it is a character, first use the desDecryption method to decrypt it
-                $des_decryption_result = $this->desDecryption($char);
-    
-                // Then use substitutionDecryption method to decrypt
-                $decrypted_result .= $this->substitutionDecryption($des_decryption_result);
-            }
-        }
-        return $decrypted_result;
+        $des_decryption_result = $this->desdecryption($plainText);
+        //return $des_decryption_result;
+        $ancient_decryption_result = $this->substitutionDecryption($des_decryption_result);
+        //$ancient_decryption_result = $this->substitutionDecryption($plainText);
+        //return $ancient_decryption_result;
+        
+        $transposition_decryption_result = $this->transpositionDecryption($ancient_decryption_result,'ABCDEF');
+        return $transposition_decryption_result;
     }
 
     private function isCustomNumeric($char) {
@@ -61,27 +51,74 @@ class DecryptClass {
     }
     //Ancient Decryption -> Substitution cipher
     private function substitutionDecryption($text) {  
-        $limit_ascii_capital_letter = 64 + $this->shifting; /*68 */
-        $limit_ascii_smell_letter = 96 + $this->shifting; /*100 */
         $length = strlen($text);
         $decrypted_result = "";
     
         for ($i = 0; $i < $length; $i++) {
             $single_word = $text[$i];
             $toascii = ord($single_word);
-                if ($toascii <= $limit_ascii_smell_letter && $toascii >= 65 || $toascii <= $limit_ascii_capital_letter && $toascii >= 97) {
-                    $decrypted_result .= chr($toascii + (26 - $this->shifting));
-                } else {
-                    $decrypted_result .= chr($toascii - $this->shifting);
-                }
+            if ($toascii >= 65 && $toascii <= 90) {
+                $decrypted_result .= chr(($toascii - 65 - $this->shifting + 26) % 26 + 65);
+            } elseif ($toascii >= 97 && $toascii <= 122) {
+                $decrypted_result .= chr(($toascii - 97 - $this->shifting + 26) % 26 + 97);
+            } else {
+                $decrypted_result .= $single_word;
+            }
         }
         
         return $decrypted_result;
     }
 
     //Ancient Decryption -> Transposition cipher
-    private function transpositionDecryption($text){
+    private function transpositionDecryption($text,$key){
         //coding....
+        $text = str_replace(' ', '', $text);
+        $keyLength = strlen($key);
+        $encryptedLength = strlen($text);
+
+        // Calculate the number of rows required in the grid
+        $numRows = ceil($encryptedLength / $keyLength);
+
+        // Calculate the number of empty cells
+        $numEmptyCells = ($numRows * $keyLength) - $encryptedLength;
+
+        // Rearrange the columns based on the key
+        $sortedKey = str_split($key);
+        asort($sortedKey);
+
+        // Calculate the number of cells in each column
+        $colCounts = array();
+        foreach ($sortedKey as $col) {
+            $colCounts[] = $numRows - (substr_count($key, $col) - 1);
+        }
+        // Create an empty grid
+        $grid = array();
+        for ($i = 0; $i < $numRows; $i++) {
+            $grid[$i] = array();
+        }
+        $index = 0;
+        foreach ($sortedKey as $col) {
+            $colIndex = array_search($col, str_split($key));
+            $colCount = $colCounts[$colIndex];
+            for ($row = 0; $row < $colCount; $row++) {
+                if ($index < $encryptedLength) {
+                    $grid[$row][$colIndex] = $text[$index];
+                    $index++;
+                } else {
+                    break;
+                }
+            }
+        }
+        // Read the decrypted message from the grid
+        $decryptedMessage = '';
+        for ($row = 0; $row < $numRows; $row++) {
+            for ($col = 0; $col < $keyLength; $col++) {
+                if (isset($grid[$row][$col])) {
+                    $decryptedMessage .= $grid[$row][$col];
+                }
+            }
+        }
+        return $decryptedMessage;
     }
 
     //Symmetric Decryption -> DES decryption

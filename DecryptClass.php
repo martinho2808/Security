@@ -4,56 +4,35 @@ class DecryptClass {
     private $shifting; //the key use Substitution cipher
     private $desKey; // the key use for DES encryption
     private $desSize; // the size use for DES encryption
-    private $numericTable; // the table used for numeric encryption
-    
+    private $rod_diameter; //the key of skytale
+    private $transpositionKey; //the key of Transposition
+
     public function __construct() {
         //assign the value to keys
         $this->shifting = 3;
         $this->desKey = decbin(ord("20"));
         $this->desSize = 8;
-        //If directly use the encryption method for numbers, there will be problems in processing (for example, lost data after hexadecimal conversion)
-        $this->numericTable = [
-            'က' => '0',
-            'ခ' => '1',
-            'ဂ' => '2',
-            'ဃ' => '3',
-            'င' => '4',
-            'စ' => '5',
-            'ဆ' => '6',
-            'ဇ' => '7',
-            'ဈ' => '8',
-            'ဉ' => '9',
-        ];
+        $this->rod_diameter = 4;
+        $this->transpositionKey = "ABCDEF";
     }
 
     //Main function to use multiple method decrypt the text
-    public function decryption($plainText) {
-        $des_decryption_result = $this->desdecryption($plainText);
-        //return $des_decryption_result;
-        $ancient_decryption_result = $this->substitutionDecryption($des_decryption_result);
-        //$ancient_decryption_result = $this->substitutionDecryption($plainText);
-        //return $ancient_decryption_result;
+    public function decryption($plainText){
+        $transposition_decryption_result = $this->transpositionDecryption($plainText,'ABCDEF');
+        $des_decryption_result = $this->desEncryption($transposition_decryption_result);
+        $substitution_decryption_result = $this->substitutionDecryption($des_decryption_result);
+        $skytale_decryption_result = $this->skytaleDecryption($substitution_decryption_result);
+        return $skytale_decryption_result;
         
-        $transposition_decryption_result = $this->transpositionDecryption($ancient_decryption_result,'ABCDEF');
-        return $transposition_decryption_result;
+        //$transposition_decryption_result = $this->transpositionDecryption($ancient_decryption_result,'ABCDEF');
+        //return $transposition_decryption_result;
     }
 
-    private function isCustomNumeric($char) {
-        return isset($this->numericTable[$char]);
-    }
-    private function decryptNumericData($numericData) {
-        if (isset($this->numericTable[$numericData])) {
-            return $this->numericTable[$numericData];
-        } else {
-            // Handle cases where the numeric value doesn't have a corresponding encryption value
-            return $numericData;
-        }
-    }
     //Ancient Decryption -> Substitution cipher
     private function substitutionDecryption($text) {  
         $length = strlen($text);
         $decrypted_result = "";
-    
+    // Use a forloop to add the content text that needs to be decrypted one by one and perform substitution separately.
         for ($i = 0; $i < $length; $i++) {
             $single_word = $text[$i];
             $toascii = ord($single_word);
@@ -68,61 +47,56 @@ class DecryptClass {
         
         return $decrypted_result;
     }
+    
 
-    //Ancient Decryption -> Transposition cipher
-    private function transpositionDecryption($text,$key){
-        //coding....
-        $text = str_replace(' ', '', $text);
-        $keyLength = strlen($key);
-        $encryptedLength = strlen($text);
-
-        // Calculate the number of rows required in the grid
-        $numRows = ceil($encryptedLength / $keyLength);
-
-        // Calculate the number of empty cells
-        $numEmptyCells = ($numRows * $keyLength) - $encryptedLength;
-
-        // Rearrange the columns based on the key
-        $sortedKey = str_split($key);
-        asort($sortedKey);
-
-        // Calculate the number of cells in each column
-        $colCounts = array();
-        foreach ($sortedKey as $col) {
-            $colCounts[] = $numRows - (substr_count($key, $col) - 1);
-        }
-        // Create an empty grid
+    //Ancient Decryption -> Transposition  cipher
+    private function transpositionDecryption($ciphertext, $key){
+        //Convert the key to an array, and then arrange the keys in alphabetical order
+        $keyArr = str_split($key);
+        sort($keyArr);
+        // Calculate the length of content and key
+        $keyLength = count($keyArr);
+        $textLength = strlen($ciphertext);
+    
+        // Calculate the number of rows required
+        $numRows = ceil($textLength / $keyLength);
+    
+        //Create an empty grid
         $grid = array();
         for ($i = 0; $i < $numRows; $i++) {
-            $grid[$i] = array();
+            $grid[$i] = array_fill(0, $keyLength, '');
         }
+    
+        // Fill the grid with ciphertext in columns
         $index = 0;
-        foreach ($sortedKey as $col) {
-            $colIndex = array_search($col, str_split($key));
-            $colCount = $colCounts[$colIndex];
-            for ($row = 0; $row < $colCount; $row++) {
-                if ($index < $encryptedLength) {
-                    $grid[$row][$colIndex] = $text[$index];
+        for ($col = 0; $col < $keyLength; $col++) {
+            $colIndex = array_search($keyArr[$col], $keyArr);
+            for ($row = 0; $row < $numRows; $row++) {
+                if ($index < $textLength) {
+                    $grid[$row][$colIndex] = $ciphertext[$index];
                     $index++;
                 } else {
                     break;
                 }
             }
         }
-        // Read the decrypted message from the grid
-        $decryptedMessage = '';
+    
+        // Read the characters in the grid in the order of the key to form plain text
+        $plaintext = '';
         for ($row = 0; $row < $numRows; $row++) {
             for ($col = 0; $col < $keyLength; $col++) {
-                if (isset($grid[$row][$col])) {
-                    $decryptedMessage .= $grid[$row][$col];
-                }
+                $plaintext .= $grid[$row][$col];
             }
         }
-        return $decryptedMessage;
+    
+        // Remove fill characters
+        $plaintext = rtrim($plaintext, '_');
+    
+        return $plaintext;
     }
 
-    //Symmetric Decryption -> DES decryption
-    private function desDecryption($text)
+    //Symmetric Decrytion -> DES decryption
+    private function desEncryption($text)
     {
         $Des_paddingChar = $this->desSize - (strlen($this->desKey) % $this->desSize);
         $Des_bin = str_repeat('0', $Des_paddingChar) . $this->desKey;
@@ -158,8 +132,25 @@ class DecryptClass {
         return $decrypt_result;
     }
 
-    //Symmetric Decryption -> AES decryption
-    private function aesDecryption($text){
-        //code...
-    }
+       //Symmetric Decrytion -> Skytale decryption
+       private function skytaleDecryption($ciphertext){
+        $plaintext = "";
+        $length = strlen($ciphertext);
+
+        // Calculate the number of rows needed on the imaginary rod
+        $numRows = ceil($length / $this->rod_diameter);
+
+        // Read the message from the rod column by column to decrypt
+        for ($i = 0; $i < $numRows; $i++) {
+            for ($j = 0; $j < $this->rod_diameter; $j++) {
+                $position = $j * $numRows + $i;
+                if ($position < $length) {
+                    $plaintext .= substr($ciphertext,$position,1);
+                // $plaintext .= $ciphertext[$position];
+                }
+            }
+        }
+
+        return rtrim($plaintext, "_");
+   }
 }

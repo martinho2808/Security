@@ -1,6 +1,6 @@
 <?php
-require 'EncryptClass_keith20231128.php';
-require 'DecryptClass_keith20231128.php';
+require 'EncryptClass.php';
+require 'DecryptClass.php';
 
 $encrypt_request = isset($_POST['encrypt_input']) ? $_POST['encrypt_input'] : "";
 $decrypt_request = isset($_POST['decrypt_input']) ? $_POST['decrypt_input'] : "";
